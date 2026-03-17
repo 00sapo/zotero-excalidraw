@@ -90,119 +90,77 @@ Zotero.ZoteroExcalidraw = Object.assign(Zotero.ZoteroExcalidraw, {
 		Zotero.ZoteroExcalidraw.Logger.log('Zotero.ZoteroExcalidraw inited.');
 	},
 	
-	createCollectionMenu() {
-		let allowTypes = ['collection'];
-		let type = Zotero.getMainWindow().ZoteroPane.getCollectionTreeRow().type;
-		Zotero.ZoteroExcalidraw.Logger.log(type);
-
-		let root = 'zotero-collectionmenu';
-		let zotero_collectionmenu = Zotero.getMainWindow().document.getElementById(root);
-
-		let menuseparator = Zotero.ZoteroExcalidraw.Doms.createMainWindowXULMenuSeparator({
-			id: `${root}-zotero-excalidraw-separator1`,
-			parent: zotero_collectionmenu,
+	registerMenus() {
+		// Register collection context menu using Zotero 8 MenuManager API
+		Zotero.MenuManager.registerMenu({
+			menuID: 'zotero-excalidraw-collection-menu',
+			pluginID: this.id,
+			target: 'main/library/collection',
+			menus: [{
+				menuType: 'menuitem',
+				l10nID: 'zotero-excalidraw',
+				onCommand: () => {
+					Zotero.ZoteroExcalidraw.collectionExcalidraw();
+				},
+				onShowing: (_event, context) => {
+					let enabled = context.collectionTreeRow?.type === 'collection' &&
+						Zotero.getMainWindow().ZoteroPane.getSelectedLibraryID() === Zotero.Libraries.userLibraryID;
+					context.setEnabled(!!enabled);
+				}
+			}]
 		});
-		this.storeAddedElement(menuseparator);
-		menuseparator.disabled = !allowTypes.includes(type) || Zotero.getMainWindow().ZoteroPane.getSelectedLibraryID() !== Zotero.Libraries.userLibraryID;
 
-		let zotero_excalidrawManager = Zotero.ZoteroExcalidraw.Doms.createMainWindowXULElement('menuitem', {
-			id: `${root}-zotero-excalidraw`,
-			attrs: {
-				'data-l10n-id': 'zotero-excalidraw',
-			},
-			command: () => {
-				this.collectionExcalidraw();
-			},
-			parent: zotero_collectionmenu,
+		// Register item context menu
+		Zotero.MenuManager.registerMenu({
+			menuID: 'zotero-excalidraw-item-menu',
+			pluginID: this.id,
+			target: 'main/library/item',
+			menus: [{
+				menuType: 'menuitem',
+				l10nID: 'zotero-excalidraw',
+				onCommand: () => {
+					Zotero.ZoteroExcalidraw.itemExcalidraw();
+				},
+				onShowing: (_event, context) => {
+					let items = context.items || [];
+					let enabled = items.find(item => item.isRegularItem() || item.isNote() ||
+						(item.isFileAttachment() && ['application/excalidraw', 'application/pdf'].includes(item.attachmentContentType))) &&
+						Zotero.getMainWindow().ZoteroPane.getSelectedLibraryID() === Zotero.Libraries.userLibraryID;
+					context.setEnabled(!!enabled);
+				}
+			}]
 		});
-		zotero_excalidrawManager.lable = 'excalidraw';
-		this.storeAddedElement(zotero_excalidrawManager);
-		zotero_excalidrawManager.disabled = !allowTypes.includes(type) || Zotero.getMainWindow().ZoteroPane.getSelectedLibraryID() !== Zotero.Libraries.userLibraryID;
+
+		// Register notes pane "add item note" menu
+		Zotero.MenuManager.registerMenu({
+			menuID: 'zotero-excalidraw-note-pane-menu',
+			pluginID: this.id,
+			target: 'notesPane/addItemNote',
+			menus: [{
+				menuType: 'menuitem',
+				l10nID: 'zotero-excalidraw',
+				onCommand: () => {
+					Zotero.ZoteroExcalidraw.attachmentExcalidraw();
+				}
+			}]
+		});
 	},
 
-	createItemMenu() {
-		let items = Zotero.ZoteroExcalidraw.Items.getSelectedItems();
-		let enabled = items.find(item => item.isRegularItem() || item.isNote() ||
-			(item.isFileAttachment() && ['application/excalidraw', 'application/pdf'].includes(item.attachmentContentType))) &&
-			Zotero.getMainWindow().ZoteroPane.getSelectedLibraryID() === Zotero.Libraries.userLibraryID;
-
-		let root = 'zotero-itemmenu';
-		let zotero_itemmenu = Zotero.getMainWindow().document.getElementById(root);
-		let menuseparator = Zotero.ZoteroExcalidraw.Doms.createMainWindowXULMenuSeparator({
-			id: `${root}-zotero-excalidraw-separator1`,
-			parent: zotero_itemmenu
-		});
-		this.storeAddedElement(menuseparator);
-
-		Zotero.ZoteroExcalidraw.Logger.ding();
-
-		// ZoteroExcalidraw
-		let zotero_excalidrawMenu = Zotero.ZoteroExcalidraw.Doms.createMainWindowXULElement('menuitem', {
-			id: `${root}-zotero-excalidraw-menuitem`,
-			command: () => {
-				this.itemExcalidraw();
-			},
-			attrs: {
-				'data-l10n-id': 'zotero-excalidraw',
-			},
-			parent: zotero_itemmenu
-		});
-		zotero_excalidrawMenu.lable = 'excalidraw';
-		zotero_excalidrawMenu.disabled = !enabled;
-		this.storeAddedElement(zotero_excalidrawMenu);
-	},
-
-	createPaneMenu() {
-		let root = 'context-pane-add-child-note-button-popup';
-		let elPanePopup = Zotero.getMainWindow().document.getElementById(root);
-		let menuseparator1 = Zotero.ZotCard.Doms.createMainWindowXULMenuSeparator({
-			id: `${root}-zotero-excalidraw-separator1`,
-			parent: elPanePopup
-		});
-		this.storeAddedElement(menuseparator1);
-
-		// zotero-excalidraw
-		menuitem = Zotero.ZotCard.Doms.createMainWindowXULElement('menuitem', {
-			id: `${root}-zotero-excalidraw`,
-			command: () =>{
-				this.attachmentExcalidraw();
-			},
-			attrs: {
-				'data-l10n-id': 'zotero-excalidraw',
-			},
-			parent: elPanePopup
-		});
-		this.storeAddedElement(menuitem);
-	},
-
-	
-	paneCardManager() {
-		var reader = Zotero.ZotCard.Readers.getSelectedReader();
-		if (reader) {
-			let items = [{
-				type: Zotero.ZotCard.Consts.cardManagerType.item,
-				id: Zotero.Items.get(reader.itemID).parentID
-			}];
-			Zotero.ZotCard.Dialogs.openCardManager(items);
-		}
-	},
-
-	createStandaloneMenu() {
-		let root = 'zotero-tb-note-add-popup';
-		let zotero_tb_note_add_menupopup = Zotero.ZoteroExcalidraw.Doms.getMainWindowQuerySelector('#zotero-tb-note-add menupopup');
-
+	unregisterMenus() {
+		Zotero.MenuManager.unregisterMenu('zotero-excalidraw-collection-menu');
+		Zotero.MenuManager.unregisterMenu('zotero-excalidraw-item-menu');
+		Zotero.MenuManager.unregisterMenu('zotero-excalidraw-note-pane-menu');
 	},
 
 	registerEvent() {
 		this._notifierID = Zotero.Notifier.registerObserver(this, ['tab'], 'zotero-excalidraw');
 
+		// Register menus using Zotero 8 MenuManager API
+		this.registerMenus();
+
 		Zotero.ZoteroExcalidraw.Events.register({
 			itemsViewOnSelect: this.itemsViewOnSelect.bind(this),
 			noteEditorKeyup: this.noteEditorKeyup.bind(this),
-			refreshCollectionMenuPopup: this.refreshCollectionMenuPopup.bind(this),
-			refreshItemMenuPopup: this.refreshItemMenuPopup.bind(this),
-			refreshStandaloneMenuPopup: this.refreshStandaloneMenuPopup.bind(this),
-			refreshPaneItemMenuPopup: this.refreshPaneItemMenuPopup.bind(this)
 		});
 	},
 
@@ -285,7 +243,7 @@ Zotero.ZoteroExcalidraw = Object.assign(Zotero.ZoteroExcalidraw, {
 	},
 
 	async attachmentExcalidraw() {
-		var reader = Zotero.ZotCard.Readers.getSelectedReader();
+		var reader = Zotero.Reader.getByTabID(Zotero.getMainWindow().Zotero_Tabs.selectedID);
 		if (reader) {
 			let item = Zotero.Items.get(reader.itemID);
 			if (item.isFileAttachment()) {
@@ -326,28 +284,6 @@ Zotero.ZoteroExcalidraw = Object.assign(Zotero.ZoteroExcalidraw, {
 
 	noteEditorKeyup(e) {
 		// You do not need to add it. It automatically triggers itemsViewOnSelect.
-	},
-
-	refreshCollectionMenuPopup () {
-		this.createCollectionMenu();
-	},
-
-	refreshItemMenuPopup(e) {
-		Zotero.ZoteroExcalidraw.Logger.log(e.target.id);
-
-		if (e.target.id !== 'zotero-itemmenu') {
-			return;
-		}
-		
-		this.createItemMenu();
-	},
-
-	refreshPaneItemMenuPopup() {
-		this.createPaneMenu();
-	},
-
-	refreshStandaloneMenuPopup() {
-		this.createStandaloneMenu();
 	},
 
 	// #####################
@@ -415,7 +351,8 @@ Zotero.ZoteroExcalidraw = Object.assign(Zotero.ZoteroExcalidraw, {
 	},
 
 	shutdown() {
-		Zotero.Notifier.unregisterObserver(this.notifierID);
+		Zotero.Notifier.unregisterObserver(this._notifierID);
+		this.unregisterMenus();
 		Zotero.ZoteroExcalidraw.Events.shutdown();
 	},
 
