@@ -28,8 +28,8 @@ Zotero.ZoteroExcalidraw.Messages = Object.assign(Zotero.ZoteroExcalidraw.Message
 			Zotero.getString('general.warning'),
 			message,
 			buttonFlags,
-			Zotero.ZotCard.L10ns.getString('zotcard-ok'),
-			Zotero.ZotCard.L10ns.getString('zotcard-cancel'), null, null, {});
+			Zotero.getString('general.ok'),
+			Zotero.getString('general.cancel'), null, null, {});
 		
     return index == 0;
   }
